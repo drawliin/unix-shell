@@ -6,6 +6,8 @@ import (
 	"os"
 	"slices"
 	"strings"
+
+	"shell/app/cmd"
 )
 
 var SHELL_COMMANDS = []string{"exit", "echo", "type"}
@@ -17,25 +19,29 @@ func main() {
 		command, _ := reader.ReadString('\n')
 
 		// check exit command to exit the program
-		if isExitCommand(command) {
+		if cmd.IsExitCommand(command) {
 			break
 		}
 
 		// check echo command
-		if isEchoCommand(command) {
+		if cmd.IsEchoCommand(command) {
 			args := strings.TrimSpace(command[4:])
 			fmt.Println(args)
 			continue
 		}
 
 		// check type command
-		if isTypeCommand(command) {
+		if cmd.IsTypeCommand(command) {
 			rawArgs := strings.TrimSpace(command[4:])
 			args := strings.Split(rawArgs, " ")
 
 			for _, arg := range args {
 				if slices.Contains(SHELL_COMMANDS, arg) {
 					fmt.Printf("%s is a shell builtin\n", arg)
+					break
+				}
+				if exe, err := cmd.FindExecutable(os.Getenv("PATH"), arg); err == nil {
+					fmt.Printf("%s is %s\n", arg, exe)
 				} else {
 					fmt.Printf("%s: not found\n", arg)
 				}
@@ -48,31 +54,3 @@ func main() {
 	}
 }
 
-func isExitCommand(s string) bool {
-	if strings.TrimSpace(s) == "exit" {
-		return true
-	}
-	return false
-}
-
-func isEchoCommand(s string) bool {
-	str := strings.TrimSpace(s)
-	if strings.HasPrefix(str, "echo") {
-		args := strings.Split(str, " ")
-		if args[0] == "echo" {
-			return true
-		}
-	}
-	return false
-}
-
-func isTypeCommand(s string) bool {
-	str := strings.TrimSpace(s)
-	if strings.HasPrefix(str, "type") {
-		args := strings.Split(str, " ")
-		if args[0] == "type" {
-			return true
-		}
-	}
-	return false
-}
