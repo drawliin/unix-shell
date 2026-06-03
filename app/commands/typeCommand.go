@@ -1,4 +1,4 @@
-package cmd
+package commands
 
 import (
 	"errors"
@@ -27,7 +27,7 @@ func FindExecutable(pathenv string, cmd string) (string, error) {
 
 func isExecutable(path string) bool {
 	info, err := os.Stat(path)
-	
+
 	if err != nil {
 		return false
 	}
