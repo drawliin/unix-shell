@@ -28,3 +28,10 @@ func IsTypeCommand(s string) bool {
 	}
 	return false
 }
+
+func IsPwdCommand(s string) bool {
+	if s == "pwd" {
+		return true
+	}
+	return false
+}
