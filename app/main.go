@@ -11,7 +11,7 @@ import (
 	"shell/app/commands"
 )
 
-var SHELL_COMMANDS = []string{"exit", "echo", "type"}
+var SHELL_COMMANDS = []string{"exit", "echo", "type", "pwd"}
 
 func main() {
 	reader := bufio.NewReader(os.Stdin)
@@ -52,7 +52,13 @@ func main() {
 			continue
 		}
 
-		input = strings.TrimSpace(input)
+		// check pwd command
+		if commands.IsPwdCommand(input) {
+			pwd, _ := os.Getwd()
+			fmt.Println(pwd)
+			continue
+		}
+
 		args := strings.Split(input, " ")
 		// check if command is an executable to execute it
 		exe, findErr := commands.FindExecutable(os.Getenv("PATH"), args[0])
