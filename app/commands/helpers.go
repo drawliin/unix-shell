@@ -1,37 +1,39 @@
 package commands
 
-import "strings"
+import (
+	"errors"
+	"os"
+	"path/filepath"
+)
 
-func IsExitCommand(s string) bool {
-	if s == "exit" {
-		return true
+func FindExecutable(pathenv string, cmd string) (string, error) {
+	if pathenv == "" {
+		return "", errors.New("No PATH Provided")
 	}
-	return false
-}
 
-func IsEchoCommand(s string) bool {
-	if strings.HasPrefix(s, "echo") {
-		args := strings.Split(s, " ")
-		if args[0] == "echo" {
-			return true
+	var err error
+
+	paths := filepath.SplitList(pathenv)
+	for _, p := range paths {
+		full := filepath.Join(p, cmd)
+		if isExecutable(full) {
+			return full, err
 		}
 	}
-	return false
+
+	return "", errors.New("Not an executable")
 }
 
-func IsTypeCommand(s string) bool {
-	if strings.HasPrefix(s, "type") {
-		args := strings.Split(s, " ")
-		if args[0] == "type" {
-			return true
-		}
-	}
-	return false
-}
+func isExecutable(path string) bool {
+	info, err := os.Stat(path)
 
-func IsPwdCommand(s string) bool {
-	if s == "pwd" {
-		return true
+	if err != nil {
+		return false
 	}
-	return false
+
+	if info.IsDir() {
+		return false
+	}
+
+	return info.Mode()&0111 != 0
 }
