@@ -60,6 +60,20 @@ func main() {
 					fmt.Printf("%s: not found\n", arg)
 				}
 			}
+		
+		// command to change directory
+		case "cd":
+			if len(cmdArgs) == 0 {
+				continue
+			}
+			if len(cmdArgs) > 1 {
+				fmt.Println("cd: too many arguments")
+				continue
+			}
+
+			if err := os.Chdir(cmdArgs[0]); err != nil {
+				fmt.Printf("cd: %s: No such file or directory\n", cmdArgs[0])
+			}
 
 		// check if command is an executable to execute it
 		default:
