@@ -24,15 +24,13 @@ func main() {
 		input, _ := reader.ReadString('\n')
 
 		input = strings.TrimSpace(input)
-		args := strings.Fields(input)
 
-		if len(args) == 0 {
+		if len(input) == 0 {
 			continue
 		}
 
-		cmdName := args[0]
-		cmdArgs := args[1:]
-
+		cmdName, cmdArgs := commands.ArgsParser(input)
+		
 		switch cmdName {
 		// check exit command to exit the program
 		case "exit":
@@ -71,18 +69,16 @@ func main() {
 				continue
 			}
 
-			// replace '~' shortcut with home path string
-			cmdArgs[0] = strings.ReplaceAll(cmdArgs[0], "~", os.Getenv("HOME"))
 			if err := os.Chdir(cmdArgs[0]); err != nil {
 				fmt.Printf("cd: %s: No such file or directory\n", cmdArgs[0])
 			}
 
 		// check if command is an executable to execute it
 		default:
-			exe, findErr := commands.FindExecutable(os.Getenv("PATH"), args[0])
+			exe, findErr := commands.FindExecutable(os.Getenv("PATH"), cmdName)
 			if findErr == nil {
-				cmd := exec.Command(exe, args[1:]...)
-				cmd.Args[0] = args[0]
+				cmd := exec.Command(exe, cmdArgs...)
+				cmd.Args[0] = cmdName
 
 				cmd.Stdout = os.Stdout
 				cmd.Stderr = os.Stderr
