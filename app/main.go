@@ -71,6 +71,8 @@ func main() {
 				continue
 			}
 
+			// replace '~' shortcut with home path string
+			cmdArgs[0] = strings.ReplaceAll(cmdArgs[0], "~", os.Getenv("HOME"))
 			if err := os.Chdir(cmdArgs[0]); err != nil {
 				fmt.Printf("cd: %s: No such file or directory\n", cmdArgs[0])
 			}
