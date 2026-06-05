@@ -3,99 +3,109 @@ package commands
 import (
 	"os"
 	"strings"
+	"unicode"
 )
 
-func ArgsParser(input string) (string, []string) {
-	var cmdArgs []string
-	// get command name
-	cmdName := strings.Fields(input)[0]
+func SplitTokens(input string) (string, []string) {
+	args := make([]string, 0)
 
-	// remove command from input and trim the rest
-	input = strings.TrimSpace(strings.TrimPrefix(input, cmdName))
+	var current strings.Builder
 
-	// remove adjacent quotes
-	input = strings.ReplaceAll(input, "''", "")
-	input = strings.ReplaceAll(input, "\"\"", "")
+	insideSingleQuote := false
+	insideDoubleQuote := false
+	hadSpaceBetweenQuotes := true
+	backslash := false
 
-	if strings.Count(input, "'") == 0 && strings.Count(input, "\"") == 0 {
-		return cmdName, sanitizeArgs(strings.Fields(input))
-	}
-
-	var arg strings.Builder
-
-	// cast to runes
-	inputRunes := []rune(input)
-
-	// get args
-	for i := 0; i < len(inputRunes); {
-		switch inputRunes[i] {
-		case '\'':
-			index := appendUntilEnd(inputRunes, "'", i)
-			for i <= index {
-				arg.WriteRune(inputRunes[i])
-				i++
+	for index, rune := range input {
+		if insideDoubleQuote {
+			if !backslash && rune == '"' {
+				if hadSpaceBetweenQuotes {
+					args = append(args, current.String())
+				} else {
+					// just concatenate to previous string
+					args[len(args)-1] += current.String()
+				}
+				current.Reset()
+				insideDoubleQuote = false
+				hadSpaceBetweenQuotes = false
+			} else if !backslash && rune == '\\' {
+				backslash = true
+			} else if backslash {
+				switch rune {
+				case '\\', '"', '$', '\n':
+					backslash = false
+					current.WriteRune(rune)
+				default:
+					backslash = false
+					current.WriteRune('\\')
+					current.WriteRune(rune)
+				}
+			} else {
+				current.WriteRune(rune)
 			}
-			cmdArgs = append(cmdArgs, arg.String())
-			arg.Reset()
-			i--
-
-		case '"':
-			index := appendUntilEnd(inputRunes, "\"", i)
-			for i <= index {
-				arg.WriteRune(inputRunes[i])
-				i++
+		} else if insideSingleQuote {
+			if rune == '\'' {
+				if hadSpaceBetweenQuotes {
+					args = append(args, current.String())
+				} else {
+					// just concatenate to previous string
+					args[len(args)-1] += current.String()
+				}
+				current.Reset()
+				insideSingleQuote = false
+				hadSpaceBetweenQuotes = false
+			} else {
+				current.WriteRune(rune)
 			}
-			cmdArgs = append(cmdArgs, arg.String())
-			arg.Reset()
-			i--
-
-		case ' ':
-			i++
-			continue
-
-		default:
-			arg.WriteRune(inputRunes[i])
-		}
-
-		i++
-	}
-
-	// add any remaining args
-	if arg.Len() > 0 {
-		cmdArgs = append(cmdArgs, arg.String())
-		arg.Reset()
-	}
-
-	return cmdName, sanitizeArgs(cmdArgs)
-}
-
-// Sanitize args
-func sanitizeArgs(cmdArgs []string) []string {
-
-	for i := 0; i < len(cmdArgs); i++ {
-		length := len(cmdArgs[i])
-		if cmdArgs[i][0] == '\'' && cmdArgs[i][length-1] == '\'' {
-			cmdArgs[i] = cmdArgs[i][1 : length-1]
-		} else if cmdArgs[i][0] == '"' && cmdArgs[i][length-1] == '"' {
-			cmdArgs[i] = cmdArgs[i][1 : length-1]
+		} else if backslash {
+			backslash = false
+			current.WriteRune(rune)
+		} else if rune == '\\' {
+			backslash = true
+		} else if rune == '\'' {
+			insideSingleQuote = true
+		} else if rune == '"' {
+			insideDoubleQuote = true
+		} else if rune == '~' {
+			if current.Len() > 0 || (current.Len() == 0 && index < len(input)-1 && input[index+1] != '/') {
+				current.WriteRune(rune)
+			} else {
+				homeDir := winToUnixPath(os.Getenv("HOME"))
+				for _, c := range homeDir {
+					current.WriteRune(c)
+				}
+			}
+		} else if unicode.IsSpace(rune) {
+			hadSpaceBetweenQuotes = true
+			if current.Len() > 0 {
+				args = append(args, current.String())
+				current.Reset()
+			}
 		} else {
-			cmdArgs[i] = strings.ReplaceAll(cmdArgs[i], "~", os.Getenv("HOME"))
+			current.WriteRune(rune)
 		}
 	}
 
-	return cmdArgs
+	// Last field might end at EOF.
+	if current.Len() > 0 {
+		if hadSpaceBetweenQuotes {
+			args = append(args, current.String())
+		} else {
+			// just concatenate to previous string
+			args[len(args)-1] += current.String()
+		}
+	}
+
+	return args[0], args[1:]
 }
 
-func appendUntilEnd(inputRunes []rune, param string, index int) int {
-	for i := index + 1; i < len(inputRunes); i++ {
-		if string(inputRunes[i]) == param && i < len(inputRunes)-1 && inputRunes[i+1] != ' ' {
-			param = " "
-		} else if string(inputRunes[i]) == param {
-			return i
-		} else if param == " " && i == len(inputRunes)-1 {
-			return i
-		}
+func winToUnixPath(homeDir string) string {
+	homeDir = strings.ReplaceAll(homeDir, "\\", "/")
+
+	if len(homeDir) >= 2 && homeDir[1] == ':' {
+		drive := strings.ToLower(homeDir[:1])
+		homeDir = "/" + drive + homeDir[2:]
 	}
 
-	return -1
+	return homeDir
 }

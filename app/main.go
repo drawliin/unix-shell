@@ -29,7 +29,7 @@ func main() {
 			continue
 		}
 
-		cmdName, cmdArgs := commands.ArgsParser(input)
+		cmdName, cmdArgs := commands.SplitTokens(input)
 
 		switch cmdName {
 		// check exit command to exit the program
