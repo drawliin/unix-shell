@@ -30,7 +30,7 @@ func main() {
 		}
 
 		cmdName, cmdArgs := commands.ArgsParser(input)
-		
+
 		switch cmdName {
 		// check exit command to exit the program
 		case "exit":
@@ -50,15 +50,17 @@ func main() {
 			for _, arg := range cmdArgs {
 				if builtins[arg] {
 					fmt.Printf("%s is a shell builtin\n", arg)
-					break
+					continue
 				}
-				if exe, err := commands.FindExecutable(os.Getenv("PATH"), arg); err == nil {
+				
+				exe, err := exec.LookPath(arg)
+				if err == nil {
 					fmt.Printf("%s is %s\n", arg, exe)
 				} else {
 					fmt.Printf("%s: not found\n", arg)
 				}
 			}
-		
+
 		// command to change directory
 		case "cd":
 			if len(cmdArgs) == 0 {
@@ -75,20 +77,13 @@ func main() {
 
 		// check if command is an executable to execute it
 		default:
-			exe, findErr := commands.FindExecutable(os.Getenv("PATH"), cmdName)
-			if findErr == nil {
-				cmd := exec.Command(exe, cmdArgs...)
-				cmd.Args[0] = cmdName
+			cmd := exec.Command(cmdName, cmdArgs...)
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
+			cmd.Stdin = os.Stdin
 
-				cmd.Stdout = os.Stdout
-				cmd.Stderr = os.Stderr
-
-				runErr := cmd.Run()
-				if runErr != nil {
-					fmt.Fprintln(os.Stderr, runErr)
-				}
-			} else {
-				fmt.Printf("%s: command not found\n", input)
+			if err := cmd.Run(); err != nil {
+				fmt.Printf("%s: command not found\n", cmdName)
 			}
 		}
 	}
