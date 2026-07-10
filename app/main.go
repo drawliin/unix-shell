@@ -85,21 +85,7 @@ func main() {
 		// check if command is an executable to execute it
 		default:
 			cmd := exec.Command(cmdName, cmdArgs...)
-			if stdoutRedirect == "" {
-				cmd.Stdout = os.Stdout
-			} else {
-				file, err := os.Create(stdoutRedirect)
-				if err != nil {
-					fmt.Printf("%s: %v\n", stdoutRedirect, err)
-					continue
-				}
-				defer file.Close()
-				cmd.Stdout = file
-			}
-			cmd.Stderr = os.Stderr
-			cmd.Stdin = os.Stdin
-
-			if err := cmd.Run(); err != nil {
+			if err := commands.RunCommand(cmd, stdoutRedirect); err != nil {
 				var exitErr *exec.ExitError
 				if errors.As(err, &exitErr) {
 					// The program was found and executed, but it exited with a failure code.
