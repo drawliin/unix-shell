@@ -1,31 +1,52 @@
 package commands
 
 import (
+	"fmt"
 	"os"
 	"strings"
 	"unicode"
 )
 
-func SplitTokens(input string) (string, []string) {
-	args := make([]string, 0)
+type shellToken struct {
+	text   string
+	quoted bool
+}
+
+func appendToken(tokens *[]shellToken, current *strings.Builder, currentQuoted *bool, hadSpaceBetweenQuotes *bool) {
+	if current.Len() == 0 {
+		return
+	}
+
+	if *hadSpaceBetweenQuotes || len(*tokens) == 0 {
+		*tokens = append(*tokens, shellToken{
+			text:   current.String(),
+			quoted: *currentQuoted,
+		})
+	} else {
+		(*tokens)[len(*tokens)-1].text += current.String()
+		(*tokens)[len(*tokens)-1].quoted = (*tokens)[len(*tokens)-1].quoted || *currentQuoted
+	}
+
+	current.Reset()
+	*currentQuoted = false
+}
+
+func SplitTokens(input string) (string, []string, string) {
+	tokens := make([]shellToken, 0)
 
 	var current strings.Builder
 
 	insideSingleQuote := false
 	insideDoubleQuote := false
 	hadSpaceBetweenQuotes := true
+	currentQuoted := false
 	backslash := false
 
 	for index, rune := range input {
 		if insideDoubleQuote {
 			if !backslash && rune == '"' {
-				if hadSpaceBetweenQuotes {
-					args = append(args, current.String())
-				} else {
-					// just concatenate to previous string
-					args[len(args)-1] += current.String()
-				}
-				current.Reset()
+				currentQuoted = true
+				appendToken(&tokens, &current, &currentQuoted, &hadSpaceBetweenQuotes)
 				insideDoubleQuote = false
 				hadSpaceBetweenQuotes = false
 			} else if !backslash && rune == '\\' {
@@ -45,13 +66,8 @@ func SplitTokens(input string) (string, []string) {
 			}
 		} else if insideSingleQuote {
 			if rune == '\'' {
-				if hadSpaceBetweenQuotes {
-					args = append(args, current.String())
-				} else {
-					// just concatenate to previous string
-					args[len(args)-1] += current.String()
-				}
-				current.Reset()
+				currentQuoted = true
+				appendToken(&tokens, &current, &currentQuoted, &hadSpaceBetweenQuotes)
 				insideSingleQuote = false
 				hadSpaceBetweenQuotes = false
 			} else {
@@ -75,28 +91,47 @@ func SplitTokens(input string) (string, []string) {
 					current.WriteRune(c)
 				}
 			}
+		} else if rune == '>' {
+			operator := ">"
+			if current.String() == "1" {
+				current.Reset()
+				operator = "1>"
+			} else {
+				appendToken(&tokens, &current, &currentQuoted, &hadSpaceBetweenQuotes)
+			}
+			tokens = append(tokens, shellToken{text: operator})
+			hadSpaceBetweenQuotes = true
 		} else if unicode.IsSpace(rune) {
 			hadSpaceBetweenQuotes = true
-			if current.Len() > 0 {
-				args = append(args, current.String())
-				current.Reset()
-			}
+			appendToken(&tokens, &current, &currentQuoted, &hadSpaceBetweenQuotes)
 		} else {
 			current.WriteRune(rune)
 		}
 	}
 
 	// Last field might end at EOF.
-	if current.Len() > 0 {
-		if hadSpaceBetweenQuotes {
-			args = append(args, current.String())
-		} else {
-			// just concatenate to previous string
-			args[len(args)-1] += current.String()
+	appendToken(&tokens, &current, &currentQuoted, &hadSpaceBetweenQuotes)
+
+	redirectPath := ""
+	filteredArgs := make([]string, 0, len(tokens))
+
+	for i := 0; i < len(tokens); i++ {
+		if (tokens[i].text == ">" || tokens[i].text == "1>") && !tokens[i].quoted {
+			if i+1 < len(tokens) {
+				redirectPath = tokens[i+1].text
+				i++
+			}
+			continue
 		}
+
+		filteredArgs = append(filteredArgs, tokens[i].text)
 	}
 
-	return args[0], args[1:]
+	if len(filteredArgs) == 0 {
+		return "", nil, redirectPath
+	}
+
+	return filteredArgs[0], filteredArgs[1:], redirectPath
 }
 
 func winToUnixPath(homeDir string) string {
@@ -108,4 +143,15 @@ func winToUnixPath(homeDir string) string {
 	}
 
 	return homeDir
+}
+
+func WriteOutput(path string, output string) {
+	if path == "" {
+		fmt.Print(output)
+		return
+	}
+
+	if err := os.WriteFile(path, []byte(output), 0644); err != nil {
+		fmt.Printf("%s: %v\n", path, err)
+	}
 }
