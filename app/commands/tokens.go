@@ -25,7 +25,7 @@ func appendToken(tokens *[]shellToken, current *strings.Builder, currentQuoted *
 	*currentQuoted = false
 }
 
-func SplitTokens(input string) (string, []string, string) {
+func SplitTokens(input string) (string, []string, stdPath) {
 	tokens := make([]shellToken, 0)
 
 	var current strings.Builder
@@ -90,6 +90,9 @@ func SplitTokens(input string) (string, []string, string) {
 			if current.String() == "1" {
 				current.Reset()
 				operator = "1>"
+			} else if current.String() == "2" {
+				current.Reset()
+				operator = "2>"
 			} else {
 				appendToken(&tokens, &current, &currentQuoted, &hadSpaceBetweenQuotes)
 			}
@@ -106,13 +109,28 @@ func SplitTokens(input string) (string, []string, string) {
 	// Last field might end at EOF.
 	appendToken(&tokens, &current, &currentQuoted, &hadSpaceBetweenQuotes)
 
-	redirectPath := ""
+	redirectPath := stdPath{}
+
 	filteredArgs := make([]string, 0, len(tokens))
 
 	for i := 0; i < len(tokens); i++ {
 		if (tokens[i].text == ">" || tokens[i].text == "1>") && !tokens[i].quoted {
 			if i+1 < len(tokens) {
-				redirectPath = tokens[i+1].text
+				redirectPath = stdPath{
+					path: tokens[i+1].text,
+					stdout: true,
+				}
+				i++
+			}
+			continue
+		}
+
+		if (tokens[i].text == "2>") && !tokens[i].quoted {
+			if i+1 < len(tokens) {
+				redirectPath = stdPath{
+					path: tokens[i+1].text,
+					stderr: true,
+				}
 				i++
 			}
 			continue

@@ -30,7 +30,7 @@ func main() {
 			continue
 		}
 
-		cmdName, cmdArgs, stdoutRedirect := commands.SplitTokens(input)
+		cmdName, cmdArgs, stdRedirect := commands.SplitTokens(input)
 		if cmdName == "" {
 			continue
 		}
@@ -42,12 +42,12 @@ func main() {
 
 		// check echo command
 		case "echo":
-			commands.WriteOutput(stdoutRedirect, strings.Join(cmdArgs, " ")+"\n")
+			commands.WriteOutput(stdRedirect, strings.Join(cmdArgs, " ")+"\n")
 
 		// check pwd command
 		case "pwd":
 			pwd, _ := os.Getwd()
-			commands.WriteOutput(stdoutRedirect, pwd+"\n")
+			commands.WriteOutput(stdRedirect, pwd+"\n")
 
 		// check type command
 		case "type":
@@ -66,7 +66,7 @@ func main() {
 					output = fmt.Sprintf("%s: not found\n", arg)
 				}
 			}
-			commands.WriteOutput(stdoutRedirect, output)
+			commands.WriteOutput(stdRedirect, output)
 
 		// command to change directory
 		case "cd":
@@ -85,7 +85,7 @@ func main() {
 		// check if command is an executable to execute it
 		default:
 			cmd := exec.Command(cmdName, cmdArgs...)
-			if err := commands.RunCommand(cmd, stdoutRedirect); err != nil {
+			if err := commands.RunCommand(cmd, stdRedirect); err != nil {
 				var exitErr *exec.ExitError
 				if errors.As(err, &exitErr) {
 					// The program was found and executed, but it exited with a failure code.
