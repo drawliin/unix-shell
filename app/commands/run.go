@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"io"
 	"os"
 	"os/exec"
 )
@@ -13,18 +14,20 @@ func RunCommand(cmd *exec.Cmd, stdRedirect stdPath) error {
 		return cmd.Run()
 	}
 
-	flags := os.O_CREATE | os.O_WRONLY
-
-	if stdRedirect.appendEOF {
-		flags |= os.O_APPEND
-	} else {
-		flags |= os.O_TRUNC
-	}
-
-	file, err := os.OpenFile(stdRedirect.path, flags, 0644)
-
+	file, err := os.OpenFile(stdRedirect.path, os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return err
+	}
+
+	// Use a normal writable handle for child processes on every platform.
+	// On Windows/MSYS, inheriting an O_APPEND-style stdout can make tools like
+	// cat/ls fail with "Bad file descriptor", so we seek to EOF ourselves.
+	if stdRedirect.appendEOF {
+		file.Seek(0, io.SeekEnd)
+	} else {
+		// Plain `>` should replace the file contents before the child runs.
+		file.Truncate(0)
+		file.Seek(0, 0)
 	}
 	defer file.Close()
 
