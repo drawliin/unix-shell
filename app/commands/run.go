@@ -8,12 +8,21 @@ import (
 func RunCommand(cmd *exec.Cmd, stdRedirect stdPath) error {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	
+
 	if stdRedirect.path == "" {
 		return cmd.Run()
 	}
 
-	file, err := os.Create(stdRedirect.path)
+	flags := os.O_CREATE | os.O_WRONLY
+
+	if stdRedirect.appendEOF {
+		flags |= os.O_APPEND
+	} else {
+		flags |= os.O_TRUNC
+	}
+
+	file, err := os.OpenFile(stdRedirect.path, flags, 0644)
+
 	if err != nil {
 		return err
 	}
@@ -21,12 +30,10 @@ func RunCommand(cmd *exec.Cmd, stdRedirect stdPath) error {
 
 	if stdRedirect.stdout {
 		cmd.Stdout = file
-		return cmd.Run()
 	}
-	
+
 	if stdRedirect.stderr {
 		cmd.Stderr = file
-		return cmd.Run()
 	}
 
 	return cmd.Run()

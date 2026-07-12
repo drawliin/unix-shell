@@ -27,6 +27,8 @@ func appendToken(tokens *[]shellToken, current *strings.Builder, currentQuoted *
 
 func SplitTokens(input string) (string, []string, stdPath) {
 	tokens := make([]shellToken, 0)
+	inputRunes := []rune(input)
+	inputLen := len(inputRunes)
 
 	var current strings.Builder
 
@@ -87,12 +89,29 @@ func SplitTokens(input string) (string, []string, stdPath) {
 			}
 		} else if rune == '>' {
 			operator := ">"
-			if current.String() == "1" {
+			if current.String() == ">" {
+				operator = ">>"
 				current.Reset()
+			} else if current.String() == "1" {
 				operator = "1>"
-			} else if current.String() == "2" {
+				if index+1 < inputLen && inputRunes[index+1] == '>' {
+					current.WriteRune('>')
+					continue
+				}
 				current.Reset()
+			} else if current.String() == "2" {
 				operator = "2>"
+				if index+1 < inputLen && inputRunes[index+1] == '>' {
+					current.WriteRune('>')
+					continue
+				}
+				current.Reset()
+			} else if current.String() == "1>" {
+				current.Reset()
+				operator = "1>>"
+			} else if index+1 < inputLen && inputRunes[index+1] == '>' {
+				current.WriteRune('>')
+				continue
 			} else {
 				appendToken(&tokens, &current, &currentQuoted, &hadSpaceBetweenQuotes)
 			}
@@ -117,8 +136,21 @@ func SplitTokens(input string) (string, []string, stdPath) {
 		if (tokens[i].text == ">" || tokens[i].text == "1>") && !tokens[i].quoted {
 			if i+1 < len(tokens) {
 				redirectPath = stdPath{
-					path: tokens[i+1].text,
+					path:   tokens[i+1].text,
 					stdout: true,
+				}
+				i++
+			}
+			continue
+		}
+
+		// append
+		if (tokens[i].text == ">>" || tokens[i].text == "1>>") && !tokens[i].quoted {
+			if i+1 < len(tokens) {
+				redirectPath = stdPath{
+					path:      tokens[i+1].text,
+					stdout:    true,
+					appendEOF: true,
 				}
 				i++
 			}
@@ -128,7 +160,7 @@ func SplitTokens(input string) (string, []string, stdPath) {
 		if (tokens[i].text == "2>") && !tokens[i].quoted {
 			if i+1 < len(tokens) {
 				redirectPath = stdPath{
-					path: tokens[i+1].text,
+					path:   tokens[i+1].text,
 					stderr: true,
 				}
 				i++
