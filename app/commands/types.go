@@ -9,4 +9,5 @@ type stdPath struct {
 	path string
 	stdout bool
 	stderr bool
+	appendEOF bool
 }
