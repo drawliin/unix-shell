@@ -109,6 +109,9 @@ func SplitTokens(input string) (string, []string, stdPath) {
 			} else if current.String() == "1>" {
 				current.Reset()
 				operator = "1>>"
+			} else if current.String() == "2>" {
+				current.Reset()
+				operator = "2>>"
 			} else if index+1 < inputLen && inputRunes[index+1] == '>' {
 				current.WriteRune('>')
 				continue
@@ -144,7 +147,7 @@ func SplitTokens(input string) (string, []string, stdPath) {
 			continue
 		}
 
-		// append
+		// appendEOF
 		if (tokens[i].text == ">>" || tokens[i].text == "1>>") && !tokens[i].quoted {
 			if i+1 < len(tokens) {
 				redirectPath = stdPath{
@@ -157,11 +160,25 @@ func SplitTokens(input string) (string, []string, stdPath) {
 			continue
 		}
 
+		
 		if (tokens[i].text == "2>") && !tokens[i].quoted {
 			if i+1 < len(tokens) {
 				redirectPath = stdPath{
 					path:   tokens[i+1].text,
 					stderr: true,
+				}
+				i++
+			}
+			continue
+		}
+
+		// appendEOF
+		if (tokens[i].text == "2>>") && !tokens[i].quoted {
+			if i+1 < len(tokens) {
+				redirectPath = stdPath{
+					path:      tokens[i+1].text,
+					stderr:    true,
+					appendEOF: true,
 				}
 				i++
 			}
