@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"errors"
 	"fmt"
 	"os"
@@ -9,6 +8,8 @@ import (
 	"strings"
 
 	"shell/app/commands"
+
+	"github.com/chzyer/readline"
 )
 
 var builtins = map[string]bool{
@@ -19,10 +20,30 @@ var builtins = map[string]bool{
 }
 
 func main() {
-	reader := bufio.NewReader(os.Stdin)
+	// Build a completion tree for command names.
+	completer := readline.NewPrefixCompleter(
+		// Each PcItem is one command the user can complete with Tab.
+		readline.PcItem("exit"),
+		readline.PcItem("echo"),
+		readline.PcItem("type"),
+		readline.PcItem("pwd"),
+		readline.PcItem("cd"),
+	)
+
+	// Create the readline instance and configure the shell prompt + autocomplete.
+	reader, err := readline.NewEx(&readline.Config{
+		Prompt:       "$ ",
+		AutoComplete: completer,
+	})
+	if err != nil {
+		panic(err)
+	}
+
+	defer reader.Close()
+
 	for {
-		fmt.Print("$ ")
-		input, _ := reader.ReadString('\n')
+		// Read one full input line from the interactive terminal.
+		input, _ := reader.Readline()
 
 		input = strings.TrimSpace(input)
 
