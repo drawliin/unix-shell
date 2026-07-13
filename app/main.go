@@ -33,7 +33,7 @@ func main() {
 	// Create the readline instance and configure the shell prompt + autocomplete.
 	reader, err := readline.NewEx(&readline.Config{
 		Prompt:       "$ ",
-		AutoComplete: completer,
+		AutoComplete: commands.BellCompleter{Base: completer},
 	})
 	if err != nil {
 		panic(err)
