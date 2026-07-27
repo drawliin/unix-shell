@@ -17,18 +17,12 @@ var builtins = map[string]bool{
 	"echo": true,
 	"type": true,
 	"pwd":  true,
+	"cd": true,
 }
 
 func main() {
 	// Build a completion tree for command names.
-	completer := readline.NewPrefixCompleter(
-		// Each PcItem is one command the user can complete with Tab.
-		readline.PcItem("exit"),
-		readline.PcItem("echo"),
-		readline.PcItem("type"),
-		readline.PcItem("pwd"),
-		readline.PcItem("cd"),
-	)
+	completer := commands.MakeCompleter()
 
 	// Create the readline instance and configure the shell prompt + autocomplete.
 	reader, err := readline.NewEx(&readline.Config{
