@@ -22,7 +22,7 @@ var builtins = map[string]bool{
 
 func main() {
 	// Build a completion tree for command names.
-	completer := commands.MakeCompleter()
+	completer := commands.MakeCompleter(builtins)
 
 	// Create the readline instance and configure the shell prompt + autocomplete.
 	reader, err := readline.NewEx(&readline.Config{

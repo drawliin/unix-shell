@@ -10,7 +10,7 @@ import (
 	"github.com/chzyer/readline"
 )
 
-func MakeCompleter() readline.AutoCompleter {
+func MakeCompleter(builtins map[string] bool) readline.AutoCompleter {
 	items := []readline.PrefixCompleterInterface{
 		readline.PcItem("exit"),
 		readline.PcItem("echo"),
@@ -20,6 +20,11 @@ func MakeCompleter() readline.AutoCompleter {
 	}
 
 	for _, name := range pathExecutables() {
+		// to prevent having duplicates commands that are at the same time builtins and executables
+		// we preserve them as builtins
+		if builtins[name] {
+			continue
+		}
 		items = append(items, readline.PcItem(name))
 	}
 

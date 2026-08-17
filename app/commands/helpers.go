@@ -36,3 +36,11 @@ func WriteOutput(std stdPath, output string) {
 
 	fmt.Print(output)
 }
+
+func reconstructCmd(current string, arr [][]rune) []string {
+	var out []string
+	for _, word := range arr {
+		out = append(out, current + string(word))
+	}
+	return out
+}
